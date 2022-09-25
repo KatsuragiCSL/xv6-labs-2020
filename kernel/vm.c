@@ -131,7 +131,7 @@ kvmpa(uint64 va)
   uint64 off = va % PGSIZE;
   pte_t *pte;
   uint64 pa;
-  
+
   pte = walk(kernel_pagetable, va, 0);
   if(pte == 0)
     panic("kvmpa");
@@ -341,7 +341,7 @@ void
 uvmclear(pagetable_t pagetable, uint64 va)
 {
   pte_t *pte;
-  
+
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     panic("uvmclear");
@@ -439,4 +439,36 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+void vmprinthelper(pagetable_t pt, int level) {
+  char* head = 0;
+  switch (level) {
+    case 2:
+      head = "..";
+      break;
+    case 1:
+      head = ".. ..";
+      break;
+    case 0:
+      head = ".. .. ..";
+      break;
+  }
+
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pt[i];
+    if(pte & PTE_V){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte);
+      printf("%s%d: pte %p pa %p\n", head, i, pte, child);
+      if (level != 0) {
+        vmprinthelper((pagetable_t)child, level - 1);
+      }
+    }
+  }
+}
+
+void vmprint(pagetable_t pt) {
+  printf("page table %p\n", pt);
+  vmprinthelper(pt, 2);
 }
